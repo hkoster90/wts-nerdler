@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="wts-nerdler",
-    version="1.0.0",
+    version="1.1.0",
     author="Nerdler",
     author_email="pip@nerdler.tech",
     description="Windows Task Scheduler Framework by Nerdler.Tech",
