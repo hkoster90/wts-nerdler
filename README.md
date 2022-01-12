@@ -1,2 +1,3 @@
-# powershell_nerdler
-Powershell Framework by Nerdler.Tech
+# wts-nerdler
+Windows Task Scheduler Framework by Nerdler.Tech
+Requires access to Powershell
