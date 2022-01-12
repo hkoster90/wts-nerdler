@@ -56,20 +56,41 @@ TASK_CODECS_HEX = {
 }
 
 class windows_task_scheduler():
-    def __init__(self,task_root_path:str = "/",temp_path_root:str=f"{os.getcwd()}\\temp"):
+    def __init__(self,task_root_path:str = "\\",temp_path_root:str=f"{os.getcwd()}\\temp\\"):
+        '''
+        'task_root_path': can't be empty and must end with double backslash
+        '''
         self.task_root_path = task_root_path
         self.temp_path_root = temp_path_root
 
-    def get_status_desc(self,hexcode:str)->str:
-        return TASK_CODECS_HEX[hexcode]
+        '''
+        Create the path if not exists
+        '''
+        if not os.path.exists(self.temp_path_root):
+            os.mkdir(self.temp_path_root)
 
-    def get_task_scheduler_status(self,task_path:str="/")->list:
+    def get_status_desc(self,hexcode:str)->str:
+        try:
+            desc = TASK_CODECS_HEX[hexcode]
+            return desc
+        except KeyError:
+            return ""
+
+    def run_command(self,cmd):
+        completed = subprocess.run(["powershell", "-Command", cmd], capture_output=True)
+        return completed
+
+    def get_now_timestamp(self)->dict:
+        d = datetime.utcnow()
+        unixtime = calendar.timegm(d.utctimetuple())
+        return {"int": unixtime, "string": str(unixtime)}
+
+    def get_task_scheduler_status(self)->list:
         '''
         Returns all states of scheduled tasks of windows
-        task_path = full path of the task
         '''
-        path = f"'{self.temp_path_root}\\*'"
-        csv_temp = f"{os.getcwd()}\\temp\\tasks\\{calendar.timegm(str(datetime.utcnow().utctimetuple()))}_tasks.csv"
+        path = f"'{self.task_root_path}\\*'"
+        csv_temp = f"{self.temp_path_root}{self.get_now_timestamp()['string']}_tasks.csv"
         csv_temp_command = csv_temp.replace("\\","/")
         command = f'powershell -command "Get-ScheduledTask -TaskPath {path} | Select-Object TaskName, State, '+"@{Name='LastRunTime'; Expression={(Get-ScheduledTaskInfo $_).LastRunTime}}, @{Name='LastTaskResult'; Expression={(Get-ScheduledTaskInfo $_).lastTaskResult}}, @{Name='LastTaskResultHex'; Expression={'0x{0:X8}' -f (Get-ScheduledTaskInfo $_).lastTaskResult}}, @{Name='NextRunTime'; Expression={(Get-ScheduledTaskInfo $_).NextRunTime}}"+f" | Export-Csv -Path '{csv_temp_command}' -NoTypeInformation -Delimiter ';'"+'"'
         subprocess.call(command, shell=True)
@@ -82,7 +103,7 @@ class windows_task_scheduler():
                 alert = True
                 if d[4] == "0x00000000":
                     alert = False
-                data.append({'task_path': task_path, 'task_full_path': task_path+d[0],'task_name': d[0], 'state': d[1], 'last_runtime': d[2], 'last_task_result': d[3], 'last_task_result_hex': d[4], 'next_run_time': d[5], 'active_alert': alert, 'result_description': self.get_status_desc(d[4]), 'last_check': last_check})
+                data.append({'task_path': self.task_root_path, 'task_full_path': self.task_root_path+"\\"+d[0],'task_name': d[0], 'state': d[1], 'last_runtime': d[2], 'last_task_result': d[3], 'last_task_result_hex': d[4], 'next_run_time': d[5], 'active_alert': alert, 'result_description': self.get_status_desc(d[4]), 'last_check': last_check})
         os.remove(csv_temp)
         return data
 
@@ -91,7 +112,8 @@ class windows_task_scheduler():
         Enables task in task scheduler
         task_path = full path of the task
         '''
-        command = f'Get-ScheduledTask -Taskpath "{task_path}"|enable-ScheduledTask'
+        path = f"'{task_path}'"
+        command = f'powershell -command "Get-ScheduledTask -TaskPath {path} |enable-ScheduledTask"'
         subprocess.call(command, shell=True)
 
     def disable_task(self,task_path:str):
@@ -99,7 +121,8 @@ class windows_task_scheduler():
         Disable task in task scheduler
         task_path = full path of the task
         '''
-        command = f'Get-ScheduledTask -Taskpath "{task_path}"|disable-ScheduledTask'
+        path = f"'{task_path}'"
+        command = f'powershell -command "Get-ScheduledTask -TaskPath {path} |disable-ScheduledTask"'
         subprocess.call(command, shell=True)
 
     def start_task(self,task_path:str):
@@ -107,7 +130,8 @@ class windows_task_scheduler():
         Enables task in task scheduler
         task_path = full path of the task
         '''
-        command = f'Get-ScheduledTask -Taskpath "{task_path}"|start-ScheduledTask'
+        path = f"'{task_path}'"
+        command = f'powershell -command "Get-ScheduledTask -TaskPath {path} |start-ScheduledTask"'
         subprocess.call(command, shell=True)
 
     def stop_task(self,task_path:str):
@@ -115,7 +139,8 @@ class windows_task_scheduler():
         Stop task in task scheduler
         task_path = full path of the task
         '''
-        command = f'Get-ScheduledTask -Taskpath "{task_path}"|stop-ScheduledTask'
+        path = f"'{task_path}'"
+        command = f'powershell -command "Get-ScheduledTask -TaskPath {path} |stop-ScheduledTask"'
         subprocess.call(command, shell=True)
 
     def restart_task(self,task_path:str):
